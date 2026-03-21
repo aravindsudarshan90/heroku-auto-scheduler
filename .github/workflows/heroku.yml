@@ -1,8 +1,8 @@
-name: Heroku Auto Start/Stop
+name: Heroku Auto Start (Only Start)
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/5 * * * *'   # runs every 5 mins (for testing)
   workflow_dispatch:
 
 jobs:
@@ -10,29 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Debug API Key Length
+      - name: Start Dyno
         run: |
-          echo "Checking API key..."
-          KEY="${{ secrets.HEROKU_API_KEY }}"
-          echo "Length (raw): $(echo "$KEY" | wc -c)"
-          echo "Length (trimmed): $(echo "$KEY" | tr -d '\n' | wc -c)"
-
-      - name: Start/Stop Dyno via API
-        run: |
-          MIN=$(date -u +"%M")
-
-          if [ "$MIN" -lt 30 ]; then
-            echo "STARTING APP"
-            curl -X PATCH https://api.heroku.com/apps/japaneselanguagejobs/formation \
-              -H "Accept: application/vnd.heroku+json; version=3" \
-              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
-              -H "Content-Type: application/json" \
-              -d '{"updates":[{"type":"web","quantity":1}]}'
-          else
-            echo "STOPPING APP"
-            curl -X PATCH https://api.heroku.com/apps/japaneselanguagejobs/formation \
-              -H "Accept: application/vnd.heroku+json; version=3" \
-              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
-              -H "Content-Type: application/json" \
-              -d '{"updates":[{"type":"web","quantity":0}]}'
-          fi
+          echo "STARTING APP"
+          curl -X PATCH https://api.heroku.com/apps/japaneselanguagejobs/formation \
+            -H "Accept: application/vnd.heroku+json; version=3" \
+            -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"updates":[{"type":"web","quantity":1}]}'
