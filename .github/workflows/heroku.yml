@@ -1,8 +1,9 @@
-name: Heroku Auto Start (Only Start)
+name: Heroku Auto Start/Stop (2 Apps)
 
 on:
   schedule:
-    - cron: '*/5 * * * *'   # runs every 5 mins (for testing)
+    - cron: '30 2 * * *'   # 8:00 AM IST → START
+    - cron: '30 14 * * *'  # 8:00 PM IST → STOP
   workflow_dispatch:
 
 jobs:
@@ -10,11 +11,46 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Start Dyno
+      - name: Start or Stop Apps
         run: |
-          echo "STARTING APP"
-          curl -X PATCH https://api.heroku.com/apps/japaneselanguagejobs/formation \
-            -H "Accept: application/vnd.heroku+json; version=3" \
-            -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{"updates":[{"type":"web","quantity":1}]}'
+          HOUR=$(date -u +"%H")
+          MIN=$(date -u +"%M")
+
+          echo "Current UTC Time: $HOUR:$MIN"
+
+          if [ "$HOUR" -eq 2 ] && [ "$MIN" -eq 30 ]; then
+            echo "🚀 STARTING BOTH APPS"
+
+            # japaneselanguagejobs
+            curl -X PATCH https://api.heroku.com/apps/japaneselanguagejobs/formation \
+              -H "Accept: application/vnd.heroku+json; version=3" \
+              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
+              -H "Content-Type: application/json" \
+              -d '{"updates":[{"type":"web","quantity":1}]}'
+
+            # snrcbilling
+            curl -X PATCH https://api.heroku.com/apps/snrcbilling/formation \
+              -H "Accept: application/vnd.heroku+json; version=3" \
+              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
+              -H "Content-Type: application/json" \
+              -d '{"updates":[{"type":"web","quantity":1}]}'
+
+          elif [ "$HOUR" -eq 14 ] && [ "$MIN" -eq 30 ]; then
+            echo "🛑 STOPPING BOTH APPS"
+
+            # japaneselanguagejobs
+            curl -X PATCH https://api.heroku.com/apps/japaneselanguagejobs/formation \
+              -H "Accept: application/vnd.heroku+json; version=3" \
+              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
+              -H "Content-Type: application/json" \
+              -d '{"updates":[{"type":"web","quantity":0}]}'
+
+            # snrcbilling
+            curl -X PATCH https://api.heroku.com/apps/snrcbilling/formation \
+              -H "Accept: application/vnd.heroku+json; version=3" \
+              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
+              -H "Content-Type: application/json" \
+              -d '{"updates":[{"type":"web","quantity":0}]}'
+
+          else
+            echo "⏳ Not a scheduled action time"
