@@ -1,0 +1,28 @@
+name: Heroku Auto Start/Stop
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install Heroku CLI
+        run: curl https://cli-assets.heroku.com/install.sh | sh
+
+      - name: Set API Key
+        run: echo "HEROKU_API_KEY=${{ secrets.HEROKU_API_KEY }}" >> $GITHUB_ENV
+
+      - name: Start/Stop
+        run: |
+          MIN=$(date -u +"%M")
+
+          if [ "$MIN" -lt 30 ]; then
+            echo "STARTING APP"
+            heroku ps:scale web=1 --app japaneselanguagejobs
+          else
+            echo "STOPPING APP"
+            heroku ps:scale web=0 --app japaneselanguagejobs
+          fi
