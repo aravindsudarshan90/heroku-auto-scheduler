@@ -2,27 +2,30 @@ name: Heroku Auto Start/Stop
 
 on:
   schedule:
-    - cron: '*/5 * * * *'   # runs every 5 mins (for testing)
-  workflow_dispatch:        # allows manual run
+    - cron: '*/5 * * * *'   # testing every 5 mins
+  workflow_dispatch:
 
 jobs:
   control:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install Heroku CLI
-        run: curl https://cli-assets.heroku.com/install.sh | sh
-
-      - name: Start/Stop Dyno
+      - name: Start/Stop Dyno via API
         run: |
-          export HEROKU_API_KEY=${{ secrets.HEROKU_API_KEY }}
-
           MIN=$(date -u +"%M")
 
           if [ "$MIN" -lt 30 ]; then
             echo "STARTING APP"
-            heroku ps:scale web=1 --app japaneselanguagejobs
+            curl -n -X PATCH https://api.heroku.com/apps/japaneselanguagejobs/formation \
+              -H "Accept: application/vnd.heroku+json; version=3" \
+              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
+              -H "Content-Type: application/json" \
+              -d '{"updates":[{"type":"web","quantity":1}]}'
           else
             echo "STOPPING APP"
-            heroku ps:scale web=0 --app japaneselanguagejobs
+            curl -n -X PATCH https://api.heroku.com/apps/japaneselanguagejobs/formation \
+              -H "Accept: application/vnd.heroku+json; version=3" \
+              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
+              -H "Content-Type: application/json" \
+              -d '{"updates":[{"type":"web","quantity":0}]}'
           fi
