@@ -2,8 +2,8 @@ name: Heroku Auto Start/Stop
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
-  workflow_dispatch:
+    - cron: '*/5 * * * *'   # runs every 5 mins (for testing)
+  workflow_dispatch:        # allows manual run
 
 jobs:
   control:
@@ -13,11 +13,10 @@ jobs:
       - name: Install Heroku CLI
         run: curl https://cli-assets.heroku.com/install.sh | sh
 
-      - name: Set API Key
-        run: echo "HEROKU_API_KEY=${{ secrets.HEROKU_API_KEY }}" >> $GITHUB_ENV
-
-      - name: Start/Stop
+      - name: Start/Stop Dyno
         run: |
+          export HEROKU_API_KEY=${{ secrets.HEROKU_API_KEY }}
+
           MIN=$(date -u +"%M")
 
           if [ "$MIN" -lt 30 ]; then
