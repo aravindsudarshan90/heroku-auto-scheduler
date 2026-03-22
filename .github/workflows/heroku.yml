@@ -54,3 +54,4 @@ jobs:
 
           else
             echo "⏳ Not a scheduled action time"
+          fi
