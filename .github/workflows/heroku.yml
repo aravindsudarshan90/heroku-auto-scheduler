@@ -1,9 +1,13 @@
-name: Heroku Auto Start/Stop (2 Apps)
+name: Heroku Smart Start/Stop (2 Apps)
 
 on:
   schedule:
-    - cron: '30 2 * * *'   # 8:00 AM IST → START
-    - cron: '30 14 * * *'  # 8:00 PM IST → STOP
+    # START window (8 AM IST → 2 UTC)
+    - cron: '0,30 2 * * *'
+
+    # STOP window (8 PM IST → 14 UTC)
+    - cron: '0,30 14 * * *'
+
   workflow_dispatch:
 
 jobs:
@@ -14,38 +18,35 @@ jobs:
       - name: Start or Stop Apps
         run: |
           HOUR=$(date -u +"%H")
-          MIN=$(date -u +"%M")
 
-          echo "Current UTC Time: $HOUR:$MIN"
+          echo "Current UTC Hour: $HOUR"
 
-          if [ "$HOUR" -eq 2 ] && [ "$MIN" -eq 30 ]; then
+          # START window
+          if [ "$HOUR" -eq 2 ]; then
             echo "🚀 STARTING BOTH APPS"
 
-            # japaneselanguagejobs
             curl -X PATCH https://api.heroku.com/apps/japaneselanguagejobs/formation \
               -H "Accept: application/vnd.heroku+json; version=3" \
               -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
               -H "Content-Type: application/json" \
               -d '{"updates":[{"type":"web","quantity":1}]}'
 
-            # snrcbilling
             curl -X PATCH https://api.heroku.com/apps/snrcbilling/formation \
               -H "Accept: application/vnd.heroku+json; version=3" \
               -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
               -H "Content-Type: application/json" \
               -d '{"updates":[{"type":"web","quantity":1}]}'
 
-          elif [ "$HOUR" -eq 14 ] && [ "$MIN" -eq 30 ]; then
+          # STOP window
+          elif [ "$HOUR" -eq 14 ]; then
             echo "🛑 STOPPING BOTH APPS"
 
-            # japaneselanguagejobs
             curl -X PATCH https://api.heroku.com/apps/japaneselanguagejobs/formation \
               -H "Accept: application/vnd.heroku+json; version=3" \
               -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
               -H "Content-Type: application/json" \
               -d '{"updates":[{"type":"web","quantity":0}]}'
 
-            # snrcbilling
             curl -X PATCH https://api.heroku.com/apps/snrcbilling/formation \
               -H "Accept: application/vnd.heroku+json; version=3" \
               -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
@@ -53,5 +54,4 @@ jobs:
               -d '{"updates":[{"type":"web","quantity":0}]}'
 
           else
-            echo "⏳ Not a scheduled action time"
-          fi
+            echo "⏳ No action needed"
