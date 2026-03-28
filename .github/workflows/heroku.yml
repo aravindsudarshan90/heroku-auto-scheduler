@@ -2,12 +2,8 @@ name: Heroku Smart Start/Stop (2 Apps)
 
 on:
   schedule:
-    # START window (8 AM IST → 2 UTC)
-    - cron: '0,30 2 * * *'
-
-    # STOP window (8 PM IST → 14 UTC)
-    - cron: '0,30 14 * * *'
-
+    - cron: '0,30 2 * * *'    # START window (8 AM IST)
+    - cron: '0,30 14 * * *'   # STOP window (8 PM IST)
   workflow_dispatch:
 
 jobs:
@@ -15,43 +11,56 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Start or Stop Apps
+      - name: Start or Stop Apps (Safe Mode)
         run: |
+          set -e  # fail on error
+
           HOUR=$(date -u +"%H")
+          echo "🕒 Current UTC Hour: $HOUR"
 
-          echo "Current UTC Hour: $HOUR"
+          HEROKU_API="https://api.heroku.com"
+          HEADER_AUTH="Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}"
+          HEADER_TYPE="Content-Type: application/json"
+          HEADER_ACCEPT="Accept: application/vnd.heroku+json; version=3"
 
-          # START window
+          # Function to update app
+          update_app () {
+            APP_NAME=$1
+            TARGET=$2
+
+            echo "➡️ Processing $APP_NAME → target=$TARGET"
+
+            RESPONSE=$(curl -s -X PATCH $HEROKU_API/apps/$APP_NAME/formation \
+              -H "$HEADER_ACCEPT" \
+              -H "$HEADER_AUTH" \
+              -H "$HEADER_TYPE" \
+              -d "{\"updates\":[{\"type\":\"web\",\"quantity\":$TARGET}]}" )
+
+            echo "Response: $RESPONSE"
+
+            # Check for error
+            if echo "$RESPONSE" | grep -q "error"; then
+              echo "❌ Error updating $APP_NAME"
+              exit 1
+            else
+              echo "✅ Success for $APP_NAME"
+            fi
+          }
+
+          # START (8 AM IST → UTC 2)
           if [ "$HOUR" -eq 2 ]; then
-            echo "🚀 STARTING BOTH APPS"
+            echo "🚀 START WINDOW"
 
-            curl -X PATCH https://api.heroku.com/apps/japaneselanguagejobs/formation \
-              -H "Accept: application/vnd.heroku+json; version=3" \
-              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
-              -H "Content-Type: application/json" \
-              -d '{"updates":[{"type":"web","quantity":1}]}'
+            update_app "japaneselanguagejobs" 1
+            update_app "snrcbilling" 1
 
-            curl -X PATCH https://api.heroku.com/apps/snrcbilling/formation \
-              -H "Accept: application/vnd.heroku+json; version=3" \
-              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
-              -H "Content-Type: application/json" \
-              -d '{"updates":[{"type":"web","quantity":1}]}'
-
-          # STOP window
+          # STOP (8 PM IST → UTC 14)
           elif [ "$HOUR" -eq 14 ]; then
-            echo "🛑 STOPPING BOTH APPS"
+            echo "🛑 STOP WINDOW"
 
-            curl -X PATCH https://api.heroku.com/apps/japaneselanguagejobs/formation \
-              -H "Accept: application/vnd.heroku+json; version=3" \
-              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
-              -H "Content-Type: application/json" \
-              -d '{"updates":[{"type":"web","quantity":0}]}'
-
-            curl -X PATCH https://api.heroku.com/apps/snrcbilling/formation \
-              -H "Accept: application/vnd.heroku+json; version=3" \
-              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
-              -H "Content-Type: application/json" \
-              -d '{"updates":[{"type":"web","quantity":0}]}'
+            update_app "japaneselanguagejobs" 0
+            update_app "snrcbilling" 0
 
           else
             echo "⏳ No action needed"
+          fi
